@@ -242,5 +242,10 @@ def build_environment(
                 else ""
             )
         )
+        # Surface the per-round cross-validation reasons so a discard is
+        # diagnosable (compile error vs. degenerate scores vs. install failure).
+        if not result.validated:
+            for line in result.build_log:
+                print(f"[stage4]      {line}")
     print(f"[stage4] {len(validated)}/{len(candidates)} candidates produced validated (T_c, V_c).")
     return validated

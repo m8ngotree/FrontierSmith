@@ -23,7 +23,9 @@ from typing import Callable, List, Optional
 
 from .config import PipelineConfig
 from .judge_client import JudgeClient
+from . import llm
 from .llm import Clients, build_clients
+from .run_logging import init_run_logging
 from .stage0_seed import load_seed_pool
 from .stage1_mutate import mutate
 from .stage2_coarse_filter import coarse_filter
@@ -41,6 +43,7 @@ def _stage_with_checkpoint(
     produce: Callable[[], List[Candidate]],
 ) -> List[Candidate]:
     """Run a candidate-producing stage, caching its output to a checkpoint."""
+    llm.set_stage(name)   # tag this stage's API calls in api_calls.jsonl
     if not fresh:
         cached = load_checkpoint(config, name)
         if cached is not None:
@@ -85,58 +88,72 @@ def _sample_batch(pool: List[SeedProblem], b: int, rng: random.Random) -> List[S
 
 
 def run(config: PipelineConfig, *, fresh: bool = False, skip_preflight: bool = False) -> List[Candidate]:
-    """Execute the full multi-iteration synthesis pipeline."""
+    """Execute the full multi-iteration synthesis pipeline.
+
+    All terminal output is teed to ``synthesis/logs/run_<ts>/pipeline.log`` and
+    every LLM call is recorded to ``api_calls.jsonl`` in the same directory.
+    """
     config.ensure_dirs()
-    rng = random.Random(config.random_seed)
+    run_logger = init_run_logging(config)
+    try:
+        rng = random.Random(config.random_seed)
 
-    clients: Clients = build_clients(config)
+        clients: Clients = build_clients(config)
 
-    judge = JudgeClient(config)
-    if not judge.health():
+        judge = JudgeClient(config)
+        if not judge.health():
+            print(
+                f"[pipeline] WARNING: judge at {config.judge_url} is not reachable. "
+                f"Stage 4 will fail until it is running."
+            )
+
+        seed_pool: List[SeedProblem] = load_seed_pool(config)
+        all_validated: List[Candidate] = []
+        next_problem_index = 1
+
+        for it in range(config.num_iterations):
+            print(f"\n===== Iteration {it + 1}/{config.num_iterations} =====")
+            batch = _sample_batch(seed_pool, config.B, rng)
+            if not batch:
+                print("[pipeline] seed pool is empty; stopping.")
+                break
+
+            candidates = _stage_with_checkpoint(
+                config, f"iter{it}_stage1_mutate", fresh,
+                lambda: mutate(batch, clients, config),
+            )
+            candidates = _stage_with_checkpoint(
+                config, f"iter{it}_stage2_filter", fresh,
+                lambda: coarse_filter(candidates, clients, config),
+            )
+            candidates = _stage_with_checkpoint(
+                config, f"iter{it}_stage3_divergence", fresh,
+                lambda: idea_divergence_filter(candidates, clients, config),
+            )
+            validated = _stage_with_checkpoint(
+                config, f"iter{it}_stage4_buildenv", fresh,
+                lambda: build_environment(candidates, clients, judge, config),
+            )
+
+            selected, new_seeds, next_problem_index = select_and_write(
+                validated, config, start_index=next_problem_index
+            )
+            seed_pool.extend(new_seeds)          # line 15: expand the pool
+            all_validated.extend(selected)
+            print(f"[pipeline] iteration {it + 1} produced {len(selected)} validated problems "
+                  f"(total {len(all_validated)}).")
+
+        print(f"\n[pipeline] DONE. {len(all_validated)} validated open-ended problems written to "
+              f"{config.output_dir}.")
+        totals = llm.get_usage_totals()
         print(
-            f"[pipeline] WARNING: judge at {config.judge_url} is not reachable. "
-            f"Stage 4 will fail until it is running."
+            f"[pipeline] usage: {totals['calls']} API calls, "
+            f"{totals['input_tokens']:,} in + {totals['output_tokens']:,} out tokens, "
+            f"est. ${totals['cost_usd']:.4f} (priced models only)."
         )
-
-    seed_pool: List[SeedProblem] = load_seed_pool(config)
-    all_validated: List[Candidate] = []
-    next_problem_index = 1
-
-    for it in range(config.num_iterations):
-        print(f"\n===== Iteration {it + 1}/{config.num_iterations} =====")
-        batch = _sample_batch(seed_pool, config.B, rng)
-        if not batch:
-            print("[pipeline] seed pool is empty; stopping.")
-            break
-
-        candidates = _stage_with_checkpoint(
-            config, f"iter{it}_stage1_mutate", fresh,
-            lambda: mutate(batch, clients, config),
-        )
-        candidates = _stage_with_checkpoint(
-            config, f"iter{it}_stage2_filter", fresh,
-            lambda: coarse_filter(candidates, clients, config),
-        )
-        candidates = _stage_with_checkpoint(
-            config, f"iter{it}_stage3_divergence", fresh,
-            lambda: idea_divergence_filter(candidates, clients, config),
-        )
-        validated = _stage_with_checkpoint(
-            config, f"iter{it}_stage4_buildenv", fresh,
-            lambda: build_environment(candidates, clients, judge, config),
-        )
-
-        selected, new_seeds, next_problem_index = select_and_write(
-            validated, config, start_index=next_problem_index
-        )
-        seed_pool.extend(new_seeds)          # line 15: expand the pool
-        all_validated.extend(selected)
-        print(f"[pipeline] iteration {it + 1} produced {len(selected)} validated problems "
-              f"(total {len(all_validated)}).")
-
-    print(f"\n[pipeline] DONE. {len(all_validated)} validated open-ended problems written to "
-          f"{config.output_dir}.")
-    return all_validated
+        return all_validated
+    finally:
+        run_logger.close()
 
 
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:

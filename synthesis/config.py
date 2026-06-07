@@ -9,8 +9,9 @@ identifiers and filesystem paths. Two presets are provided:
 
 The paper uses "GPT-5.4 Thinking" (mutation, coarse filter, LLM-divergence
 judge) and "Claude Sonnet 4.6" (solver, test-case agent, verifier agent).
-Those are not real model IDs, so the defaults below point at real current
-models and are fully overridable.
+All model IDs are overridable via constructor kwargs or the CLI flags
+(``--mutation-model`` / ``--solver-model``), e.g. to route everything through
+a cheaper provider like DeepSeek for development runs.
 """
 
 from __future__ import annotations
@@ -54,6 +55,7 @@ class PipelineConfig:
     # --- Concurrency / timeouts ---
     max_workers: int = 8                # thread-pool width for parallel LLM calls
     llm_timeout: float = 120.0          # per-request timeout (seconds)
+    deepseek_llm_timeout: float = 600.0 # DeepSeek thinking responses can be slow
     preflight_timeout: float = 30.0     # per-request timeout for the startup preflight check
 
     # --- Judge ---

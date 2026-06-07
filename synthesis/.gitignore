@@ -1,0 +1,7 @@
+# Generated problem packages and intermediate build workspace
+output/
+# Per-stage resumable checkpoints
+checkpoints/
+# Python caches
+__pycache__/
+*.pyc

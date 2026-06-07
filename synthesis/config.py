@@ -44,15 +44,17 @@ class PipelineConfig:
 
     # --- Models (provider is auto-detected from the string by gen/llm.py) ---
     # Mutation / coarse filter / LLM-as-a-judge -> OpenAI reasoning model.
-    mutation_model: str = "gpt-5"
+    # Paper's "GPT-5.4 Thinking". Override via --mutation-model.
+    mutation_model: str = "gpt-5.4-2026-03-05"
     mutation_reasoning_effort: str = "medium"   # paper uses "medium thinking effort"
     # Solver / test-case agent / verifier agent -> Anthropic with extended thinking.
-    solver_model: str = "claude-sonnet-4-5-20250929"
+    solver_model: str = "claude-sonnet-4-6"
     solver_thinking_budget: int = 20000         # tokens of extended thinking (0/None disables)
 
     # --- Concurrency / timeouts ---
     max_workers: int = 8                # thread-pool width for parallel LLM calls
-    llm_timeout: float = 600.0          # per-request timeout (seconds)
+    llm_timeout: float = 120.0          # per-request timeout (seconds)
+    preflight_timeout: float = 30.0     # per-request timeout for the startup preflight check
 
     # --- Judge ---
     judge_url: str = "http://localhost:8082"
@@ -61,7 +63,7 @@ class PipelineConfig:
 
     # --- Paths ---
     seed_list_path: str = str(REPO_ROOT / "data" / "sample_lists" / "hardtest_hard_sampled_200.json")
-    problems_root: str = str(REPO_ROOT / "data" / "problems")                      # where seed statements live
+    problems_root: str = str(REPO_ROOT / "data" / "problems" / "hardtest")          # where seed statements live (download_hardtest.py writes here)
     output_dir: str = str(REPO_ROOT / "synthesis" / "output" / "problems")          # generated packages
     checkpoint_dir: str = str(REPO_ROOT / "synthesis" / "checkpoints")              # per-stage JSON
 
@@ -87,6 +89,7 @@ class PipelineConfig:
             n_test_cases=4,
             cross_validation_max_rounds=2,
             max_workers=4,
+            seed_list_path=str(REPO_ROOT / "data" / "sample_lists" / "smoke_seeds.json"),
         )
         defaults.update(overrides)
         return cls(**defaults)

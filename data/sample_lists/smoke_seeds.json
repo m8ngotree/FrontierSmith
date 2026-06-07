@@ -1,0 +1,105 @@
+{
+  "source": "hardtest_parquet_first_shard",
+  "valid_problems": [
+    {
+      "problem_id": "atcoder_1202contest_a",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_a"
+    },
+    {
+      "problem_id": "atcoder_1202contest_b",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_b"
+    },
+    {
+      "problem_id": "atcoder_1202contest_c",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_c"
+    },
+    {
+      "problem_id": "atcoder_1202contest_d",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_d"
+    },
+    {
+      "problem_id": "atcoder_1202contest_e",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_e"
+    },
+    {
+      "problem_id": "atcoder_1202contest_f",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_f"
+    },
+    {
+      "problem_id": "atcoder_1202contest_g",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_g"
+    },
+    {
+      "problem_id": "atcoder_1202contest_h",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_h"
+    },
+    {
+      "problem_id": "atcoder_1202contest_i",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_i"
+    },
+    {
+      "problem_id": "atcoder_1202contest_j",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_j"
+    },
+    {
+      "problem_id": "atcoder_1202contest_k",
+      "tier": "hard",
+      "folder_name": "atcoder_1202contest_k"
+    },
+    {
+      "problem_id": "atcoder_abc001_1",
+      "tier": "hard",
+      "folder_name": "atcoder_abc001_1"
+    },
+    {
+      "problem_id": "atcoder_abc001_2",
+      "tier": "hard",
+      "folder_name": "atcoder_abc001_2"
+    },
+    {
+      "problem_id": "atcoder_abc001_3",
+      "tier": "hard",
+      "folder_name": "atcoder_abc001_3"
+    },
+    {
+      "problem_id": "atcoder_abc001_4",
+      "tier": "hard",
+      "folder_name": "atcoder_abc001_4"
+    },
+    {
+      "problem_id": "atcoder_abc002_1",
+      "tier": "hard",
+      "folder_name": "atcoder_abc002_1"
+    },
+    {
+      "problem_id": "atcoder_abc002_3",
+      "tier": "hard",
+      "folder_name": "atcoder_abc002_3"
+    },
+    {
+      "problem_id": "atcoder_abc002_4",
+      "tier": "hard",
+      "folder_name": "atcoder_abc002_4"
+    },
+    {
+      "problem_id": "atcoder_abc003_1",
+      "tier": "hard",
+      "folder_name": "atcoder_abc003_1"
+    },
+    {
+      "problem_id": "atcoder_abc003_2",
+      "tier": "hard",
+      "folder_name": "atcoder_abc003_2"
+    }
+  ]
+}

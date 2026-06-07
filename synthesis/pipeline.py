@@ -51,6 +51,30 @@ def _stage_with_checkpoint(
     return result
 
 
+def preflight_clients(clients: Clients, config: PipelineConfig) -> bool:
+    """Verify each model is reachable before launching concurrent calls.
+
+    Prints a clear PASS/FAIL with the real error for each client. Returns True
+    only if the mutation client (needed first) is reachable.
+    """
+    print("[pipeline] preflight: probing models (one tiny call each)...")
+    checks = [("mutation", clients.mutation), ("solver", clients.solver)]
+    ok_mutation = True
+    for name, client in checks:
+        ok, msg = client.preflight(timeout=config.preflight_timeout)
+        status = "OK" if ok else "FAILED"
+        print(f"[pipeline]   {name:8s} {client.model}: {status} - {msg}")
+        if name == "mutation" and not ok:
+            ok_mutation = False
+    if not ok_mutation:
+        print(
+            "[pipeline] Mutation model is unreachable. Common causes: model id does "
+            "not exist (NotFoundError), network/proxy blocked (APIConnectionError/"
+            "APITimeoutError), or bad key (AuthenticationError). Fix and re-run."
+        )
+    return ok_mutation
+
+
 def _sample_batch(pool: List[SeedProblem], b: int, rng: random.Random) -> List[SeedProblem]:
     """Sample B problems from the pool (without replacement when possible)."""
     if not pool:
@@ -60,12 +84,13 @@ def _sample_batch(pool: List[SeedProblem], b: int, rng: random.Random) -> List[S
     return rng.sample(pool, b)
 
 
-def run(config: PipelineConfig, *, fresh: bool = False) -> List[Candidate]:
+def run(config: PipelineConfig, *, fresh: bool = False, skip_preflight: bool = False) -> List[Candidate]:
     """Execute the full multi-iteration synthesis pipeline."""
     config.ensure_dirs()
     rng = random.Random(config.random_seed)
 
     clients: Clients = build_clients(config)
+
     judge = JudgeClient(config)
     if not judge.health():
         print(
@@ -124,6 +149,10 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--batch-size", type=int, default=None, help="Override B (seeds per iteration).")
     p.add_argument("--mutation-model", default=None, help="Override mutation/judge model id.")
     p.add_argument("--solver-model", default=None, help="Override solver model id.")
+    p.add_argument("--seed-list", default=None, help="Override path to the seed-list JSON manifest.")
+    p.add_argument("--preflight-only", action="store_true",
+                   help="Only probe the models and exit (no pipeline run).")
+    p.add_argument("--no-preflight", action="store_true", help="Skip the startup model probe.")
     return p.parse_args(argv)
 
 
@@ -140,13 +169,21 @@ def main(argv: Optional[List[str]] = None) -> None:
         overrides["mutation_model"] = args.mutation_model
     if args.solver_model is not None:
         overrides["solver_model"] = args.solver_model
+    if args.seed_list is not None:
+        overrides["seed_list_path"] = args.seed_list
 
     config = (
         PipelineConfig.paper(**overrides)
         if args.preset == "paper"
         else PipelineConfig.smoke(**overrides)
     )
-    run(config, fresh=args.fresh)
+
+    if args.preflight_only:
+        clients = build_clients(config)
+        preflight_clients(clients, config)
+        return
+
+    run(config, fresh=args.fresh, skip_preflight=args.no_preflight)
 
 
 if __name__ == "__main__":

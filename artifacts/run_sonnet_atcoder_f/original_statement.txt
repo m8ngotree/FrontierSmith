@@ -1,0 +1,80 @@
+## Problem Description
+
+Given positive integers \( N, M, K \) and a sequence of positive integers \( c = (c_1, c_2, \dots, c_K) \) of length \( K \).
+
+A **multiset** \( S \) of size \( N \) consisting only of positive integers up to \( M \) is called *good* if there exist \( K \) multisets \( (S_1, S_2, \dots, S_K) \) that satisfy all the following conditions:
+
+- \( S_1, S_2, \dots, S_K \) are all non-empty.
+- For each \( i = 1, 2, \dots, K \), the median of \( S_i \) is \( c_i \).
+- The total number of elements in \( S_1, S_2, \dots, S_K \) is \( N \). The multiset consisting of these \( N \) elements is equal to \( S \).
+
+In this problem, the median of a multiset \( T \) of size \( n \ (\geq 1) \) is defined as the \( \lceil n / 2 \rceil \)-th element when the elements of \( T \) are arranged in ascending order. For example, the median of \( T = \{ 1, 2, 3, 4 \} \) is \( 2 \), and the median of \( T = \{ 1, 3, 5, 7, 7 \} \) is \( 5 \).
+
+Find the number of good multisets modulo \( 998244353 \).
+
+## Input Format
+
+The input is given from the standard input in the following format:
+
+> \( N \ M \ K \) \( c_1 \ c_2 \ \dots \ c_K \)
+
+## Output Format
+
+Output the number of good multisets modulo \( 998244353 \).
+
+## Sample Input and Output
+
+### Sample Input #1
+
+```
+8 5 3
+4 1 5
+```
+
+### Sample Output #1
+
+```
+105
+```
+
+### Sample Input #2
+
+```
+10000000 2 2
+1 2
+```
+
+### Sample Output #2
+
+```
+9999999
+```
+
+### Sample Input #3
+
+```
+30 10 5
+3 1 4 1 5
+```
+
+### Sample Output #3
+
+```
+38446044
+```
+
+## Notes/Hints
+
+### Constraints
+
+- \( 1 \leq N, M \leq 10^7 \)
+- \( 1 \leq K \leq \min(2 \times 10^5, N) \)
+- \( 1 \leq c_i \leq M \)
+- All inputs are integers
+
+### Sample Explanation 1
+
+For example, \( S = \{ 1, 1, 1, 2, 3, 4, 5, 5 \} \) is a good multiset because there exist \( (S_1, S_2, S_3) \) that satisfy the conditions as follows:
+- \( S_1 = \{ 1, \mathbf{4}, 5 \} \)
+- \( S_2 = \{ 1, \mathbf{1}, 2, 3 \} \)
+- \( S_3 = \{ \mathbf{5} \} \)

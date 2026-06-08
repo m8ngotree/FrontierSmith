@@ -1,0 +1,280 @@
+==============================================================================
+SOLUTION ANALYSIS — frontiersmith_synth_1 (atcoder_1202contest_f mutation)
+Generated: 2026-06-07
+==============================================================================
+
+PROBLEM SUMMARY
+---------------
+Given N, M, K and K distinct median targets c_1..c_K:
+  - Select N distinct integers from {1..M}
+  - Partition into K non-empty sets S_1..S_K
+  - Median of each S_i (= ceil(|S_i|/2)-th smallest element) must equal c_i
+  - Maximize total sum
+  - Score = (SUM - baseline) / (UB - baseline), clamped to [0,1]
+  - UB = sum of N largest values in {1..M}
+  - Baseline = greedy that repeatedly absorbs the largest available value into
+    whichever set can take it while preserving its median constraint
+
+TEST CASES
+----------
+  test1: N=1, M=1, K=1, c=[1]
+         Trivial: single element, single set. S_1 = {1}. SUM=UB=baseline=1.
+
+  test2: N=15, M=15, K=4, c=[1,2,9,10]
+         Moderate size. All elements from {1..15} must be used.
+         4 sets with medians at 1, 2, 9, 10.
+         UB = 15+14+...+1 = 120, baseline = 91.
+         Optimal uses all 15 elements: SUM = 120 → score = 1.0.
+
+  test3: N=1,000,000, M=1,000,000, K=200,000, c=[5,10,15,...,1,000,000]
+         Large stress test. Medians are every 5th number (arithmetic progression).
+         800,000 non-median values must be distributed as above/below each median.
+
+  test4: N=1,000,000, M=1,000,000, K=200,000 (different median pattern)
+         Similar large stress test with a different arithmetic progression.
+
+==============================================================================
+SOLUTION 0 — "Greedy right-then-left with availability check"
+==============================================================================
+
+ALGORITHM OVERVIEW
+  sol[0] computes how many elements to place above ("rights", T) and below
+  ("lefts", B) each median. It assigns rights by scanning available values
+  from largest to smallest and greedily placing each in the highest eligible
+  group. After all rights are assigned, it assigns lefts from the smallest
+  available values. Groups that received a right are eligible for a left.
+
+RESULTS
+  test1: Correct   score=1.000   time=1.05s
+         Trivial case. Single element, no extras needed.
+
+  test2: Wrong Answer   score=0   time=0.81s
+         Checker: "wrong answer Total size 10 != N=15"
+         Output only 10 elements when 15 were required.
+
+  test3: Wrong Answer   score=0   time=220.67s
+         Checker: "wrong answer Total size 599998 != N=1000000"
+         Output 599,998 elements when 1,000,000 were required.
+
+  test4: Wrong Answer   score=0   time=210.47s
+         Checker: "wrong answer Total size 600000 != N=1000000"
+         Output 600,000 elements when 1,000,000 were required.
+
+ROOT CAUSE (same bug, all three failing tests)
+  The right-assignment loop iterates over T candidate positions in `avail` and
+  skips any that have no eligible group (no group with c < v in ready_map).
+  Skipped values are permanently abandoned — they are never retried or given
+  to another group. After the right loop, groups that never received a right
+  remain in `ready_map` and are ineligible for the left loop (which only
+  assigns to `needleft_map`). The result: both skipped right slots AND their
+  corresponding left slots are left empty, so the total element count falls
+  short of N.
+
+  In test2, c=[1,2,9,10], so groups with c=1 and c=2 cannot absorb right
+  values larger than c (c=1 has no room above it for values > c=1 that are
+  below the medians 9,10 — specifically, once 2 is a median, only value 1
+  is < 2 and 1 is itself a median). The loop skips these slots, losing 5
+  placements.
+
+  In test3/4 (K=200,000 medians at multiples of 5), many large non-median
+  values cannot be placed because the largest-eligible group cap is quickly
+  saturated, causing the total shortfall to be ~400,000 elements.
+
+==============================================================================
+SOLUTION 1 — "Round-robin ji distribution with separate below/above passes"
+==============================================================================
+
+ALGORITHM OVERVIEW
+  sol[1] assigns ji "extra" elements to each set in two phases: first one
+  extra per set, then +2 per set per round until exhausted. From ji[i], it
+  derives ai[i] = ceil(ji/2) above elements and bi[i] = floor(ji/2) below
+  elements. Below values (smallest non-median) are assigned to sets sorted by
+  ascending c; above values (largest non-median) are assigned to sets sorted
+  by descending c, using shared lo/hi pointers.
+
+RESULTS
+  test1: Correct   score=1.000   time=0.70s
+         Trivial case passes.
+
+  test2: Wrong Answer   score=0   time=0.67s
+         Checker: "wrong answer Set 1 not strictly increasing at position 3"
+         Set 1 contained duplicate or out-of-order values.
+
+  test3: Wrong Answer   score=0   time=96.22s
+         Checker: "wrong answer Median of set 1 is 2, expected 5"
+         Set 1 (target median c=5) had the wrong median in its output.
+
+  test4: Wrong Answer   score=0   time=86.94s
+         Checker: "wrong answer Set 1 not strictly increasing at position 5"
+         Set 1 had duplicate or out-of-order values.
+
+ROOT CAUSE (ji over-inflation → pointer collision → duplicates)
+  The ji distribution is incorrect. The first loop adds 1 to each of the
+  first min(K, T) sets. The second loop adds 2 to all K sets per round.
+  The sum of ji values ends up equal to K + 2 * (remaining after first round)
+  which far exceeds T for typical inputs.
+
+  Example (test2, K=4, T=11):
+    First loop:  ji=[1,1,1,1], rem=7
+    Second loop round 1: ji=[3,3,3,3], rem=3
+    Second loop round 2: ji=[5,5,5,3], rem=0 (only 3 sets get +2)
+    sum(ji) = 18, but T = 11
+
+  This causes ai and bi to sum to 18 instead of 11. The shared lo/hi pointers
+  are advanced as if 18 extra elements are available, but only 11 slots exist.
+  The lo pointer (below) and hi pointer (above) end up overlapping, assigning
+  the same value to two different sets, producing duplicate elements and
+  breaking the strictly-increasing requirement within a set.
+
+  In test3 (K=200,000, T=800,000): sum(ji) = 200,000×7 = 1,400,000 >> 800,000.
+  The below pointer lo is advanced far into the range that should be reserved
+  for above values of low-c sets, placing values ≥ c into the "below" part of
+  a set, shifting the median position downward. In set 1 (c=5), too many
+  small values (1,2,...) are assigned as "below" relative to the set size,
+  so the ceil(n/2)-th element lands below 5 instead of at 5.
+
+==============================================================================
+SOLUTION 2 — "Balanced pairs with T_above / T_below capacity"
+==============================================================================
+
+ALGORITHM OVERVIEW
+  sol[2] explicitly computes T_above and T_below counts to maintain the
+  median invariant. It distributes pairs (1 above + 1 below per set) and
+  singles (1 above per set, no below) via l[i] and r[i] arrays. Below
+  elements are assigned via a pointer scanning leftward through avail;
+  above elements via a pointer scanning rightward from the largest. Sets
+  are processed in order of ascending c.
+
+RESULTS
+  test1: Correct   score=1.000   time=0.68s
+         Trivial case passes.
+
+  test2: Wrong Answer   score=0   time=0.72s
+         Checker: "wrong answer Total size 9 != N=15"
+         Output only 9 elements when 15 required.
+
+  test3: Wrong Answer   score=0   time=72.99s
+         Checker: "wrong answer Total size 785713 != N=1000000"
+         Output 785,713 elements instead of 1,000,000.
+
+  test4: Wrong Answer   score=0   time=74.51s
+         Checker: "wrong answer Total size 785779 != N=1000000"
+         Output 785,779 elements instead of 1,000,000.
+
+ROOT CAUSE (below-pointer bounded by T_below, not by actual available capacity)
+  The below assignment loop uses `bptr < T_below` as its outer bound. Inside,
+  for each set i it takes l[i] values that are < sc[i]. However, if sc[i] is
+  small relative to avail[], the inner while loop `while bptr < T_below &&
+  avail[bptr] >= sc[i]` may skip forward beyond T_below without placing any
+  values for that set. The outer bound `bptr < T_below` still exits, so those
+  slots are silently dropped.
+
+  Similarly, the above assignment is bounded by `aptr >= A - T_above`. For
+  sets with small c (processed first), the inner loop skips large values that
+  violate `avail[aptr] <= sc[i]`, decrementing aptr past many valid positions
+  without actually placing all r[i] elements. Elements that should have been
+  placed above larger-c sets are consumed by the skip, making the total count
+  short.
+
+  In test2: sc = [1, 2, 9, 10]. Set 0 (c=1) can absorb zero below values and
+  zero above values (nothing is < 1, and nothing usable is > 1 given set 1's
+  c=2 also locks out the 2). The loops advance without placing, losing 6
+  element slots.
+
+  In test3/4: with 200,000 tightly-spaced medians, many sets cannot absorb
+  their allocated l[i] below values (too few non-median numbers below their
+  c_i), causing ~214,000 missing elements.
+
+==============================================================================
+SOLUTION 3 — "Capacity-limited greedy pair distribution"
+==============================================================================
+
+ALGORITHM OVERVIEW
+  sol[3] sorts medians ascending as sc[0..K-1]. For each set i, the maximum
+  number of below-median elements is max_b[i] = sc[i] - 1 - i (values in
+  {1..sc[i]-1} minus the i smaller medians that are reserved). It distributes
+  pairs (1 above + 1 below) starting from the largest-c sets (most below
+  capacity), then assigns above values from the global pool of largest non-
+  median values (descending), and below values from the smallest.
+
+RESULTS
+  test1: Correct   score=1.000   time=0.81s
+         Trivial case passes.
+
+  test2: Correct   score=1.000   time=0.68s
+         Checker: "points 1.0 OK SUM=120 baseline=91 UB=120 Ratio: 1.000000"
+         Optimal solution found for the 15-element case.
+
+  test3: Wrong Answer   score=0   time=141.40s
+         Checker: "wrong answer Median of set 100000 is 499999, expected 500000"
+         Set 100,000 (target median 500,000) had its median off by 1.
+
+  test4: Wrong Answer   score=0   time=151.83s
+         Checker: "wrong answer Median of set 100491 is 500981, expected 500991"
+         Set 100,491 had its median off by 1.
+
+ROOT CAUSE (off-by-one in below-capacity formula for large-K inputs)
+  The below-capacity formula is: cap = sc[i] - 1 - i
+
+  Here, `i` is the 0-based rank of set i in sorted order — intended to account
+  for the i smaller median values that "consume" slots below sc[i]. However,
+  this count is wrong when K is large and the medians are densely packed.
+
+  The correct count of non-median values strictly below sc[i] is:
+    (sc[i] - 1) - (number of median values in {1..sc[i]-1})
+    = (sc[i] - 1) - i        ← correct only if exactly i medians are < sc[i]
+
+  For test3, medians are 5, 10, 15, ..., so sc[i] = 5*(i+1). For i=99999:
+    sc[99999] = 500000
+    actual medians below 500000 = 99999  (medians 5,10,...,499995)
+    cap = 500000 - 1 - 99999 = 400000   ← correct here
+
+  But the pair-distribution loop processes sets from largest i downward,
+  consuming below capacity greedily. At i=K-1 (sc=1,000,000), cap = 800000.
+  The loop assigns pairs there first, consuming shared `below_vals` entries.
+  However, `below_vals` is a global pool built from the smallest non-median
+  values across all sets. After filling large-c sets, the below_vals pointer
+  `bptr` advances into territory that should be reserved for smaller-c sets.
+
+  Concretely: when assigning below values to set i in sorted order (small c
+  first, bptr advancing), `bptr` reaches exactly the values that should sit
+  below set i's c, but the count b[i] assigned was computed under the
+  assumption that we'd always have enough consecutive small values. For sets
+  in the middle of the sorted order (i ≈ K/2), the b[i] values consumed by
+  earlier sets may push bptr above sc[i], meaning the value at bptr is now
+  >= sc[i] and cannot serve as a "below" element. The set ends up with too
+  few below elements, the median position shifts, and an element below the
+  target c lands at ceil(n/2).
+
+  In test3: set 100000 (sc=500000, 0-indexed i=99999) ends up with one too
+  few below elements relative to above elements, so the median slot (position
+  ceil(n/2)) points to 499999 instead of 500000.
+
+  In test2 this does not occur because K=4 is small and the medians (1,2,9,10)
+  are well-separated, so the capacity formula never collides.
+
+==============================================================================
+VALIDATION SUMMARY
+==============================================================================
+
+The pipeline validated this problem because sol[3] achieved score=1.0 on
+test2 while sol[0], sol[1], sol[2] scored 0.0 on test2. This gave the score
+matrix a non-trivial spread on column 2 (max - min = 1.0 > 1e-6), satisfying
+the cross-validation criterion.
+
+Score matrix (4 solutions × 4 tests):
+  sol[0]: [1.000  0.000  0.000  0.000]
+  sol[1]: [1.000  0.000  0.000  0.000]
+  sol[2]: [1.000  0.000  0.000  0.000]
+  sol[3]: [1.000  1.000  0.000  0.000]
+
+Execution divergence d_hat = 0.2500
+  C(4,2) = 6 pairs. Pairs (0,3), (1,3), (2,3) each have L2 distance 1.0 on
+  test2, normalized by 1/sqrt(4) = 0.5 → each contributes 0.5.
+  Pairs (0,1), (0,2), (1,2) all zero vectors → contribute 0.
+  d_hat = (3 × 0.5) / 6 = 0.25
+
+All test1 passes are trivial (N=M=K=1: only one valid output exists).
+All test3/test4 failures are genuine algorithmic bugs, not token-limit
+truncation. The solutions are complete C++ programs; the errors are logic
+errors in the greedy element-distribution strategies.

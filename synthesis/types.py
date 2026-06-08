@@ -99,6 +99,7 @@ class Candidate:
     checker_code: Optional[str] = None          # chk.cc (testlib verifier)
     test_inputs: List[str] = field(default_factory=list)        # materialized testdata/*.in contents
     score_matrix: List[List[float]] = field(default_factory=list)  # [n_solutions][m] of per-test scoreRatio
+    case_details: List[List[Dict[str, Any]]] = field(default_factory=list)  # [n_solutions][m] judge per-case feedback
     exec_divergence_score: Optional[float] = None              # d_hat from Eq. (3)
     validated: bool = False                                     # passed cross-validation
     build_log: List[str] = field(default_factory=list)          # per-round notes for debugging
@@ -127,6 +128,7 @@ class Candidate:
             checker_code=d.get("checker_code"),
             test_inputs=list(d.get("test_inputs", [])),
             score_matrix=[list(row) for row in d.get("score_matrix", [])],
+            case_details=[[dict(c) for c in row] for row in d.get("case_details", [])],
             exec_divergence_score=d.get("exec_divergence_score"),
             validated=bool(d.get("validated", False)),
             build_log=list(d.get("build_log", [])),

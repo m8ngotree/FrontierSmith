@@ -8,9 +8,11 @@ expand the pool for the next iteration (line 15).
 
 Each validated problem also gets a self-contained artifact bundle under
 ``config.artifacts_dir/<dir_name>/`` containing:
-  problem/          - full FrontierCS package (statement, chk.cc, gen.cpp, testdata)
-  candidate.json    - all pipeline metadata (mutation, scores, build log, etc.)
-  solutions/        - the N sampled C++ solutions as individual .cpp files
+  problem/               - full FrontierCS package (statement, chk.cc, gen.cpp, testdata)
+  candidate.json         - all pipeline metadata (mutation, scores, build log, etc.)
+  solutions/             - the N sampled C++ solutions as individual .cpp files
+  judge_feedback.json    - per-solution, per-test judge verdicts (status, msg, time, score)
+  original_statement.txt - the seed problem statement this was mutated from
 """
 
 from __future__ import annotations
@@ -31,7 +33,12 @@ def _problem_dir_name(index: int) -> str:
     return f"frontiersmith_synth_{index}"
 
 
-def _write_artifact(cand: Candidate, problem_out_dir: str, artifact_dir: str) -> None:
+def _write_artifact(
+    cand: Candidate,
+    problem_out_dir: str,
+    artifact_dir: str,
+    problems_root: str,
+) -> None:
     """Write a self-contained artifact bundle for one validated problem."""
     art = Path(artifact_dir)
     art.mkdir(parents=True, exist_ok=True)
@@ -45,8 +52,6 @@ def _write_artifact(cand: Candidate, problem_out_dir: str, artifact_dir: str) ->
 
     # 2) candidate.json — all pipeline metadata.
     meta = asdict(cand)
-    # Solutions are also written as individual files below; keep them in the
-    # JSON too for completeness but truncate very long ones to keep it readable.
     (art / "candidate.json").write_text(
         json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8"
     )
@@ -56,6 +61,36 @@ def _write_artifact(cand: Candidate, problem_out_dir: str, artifact_dir: str) ->
     sol_dir.mkdir(exist_ok=True)
     for i, code in enumerate(cand.solutions or []):
         (sol_dir / f"sol_{i}.cpp").write_text(code, encoding="utf-8")
+
+    # 4) judge_feedback.json — per-solution, per-test judge verdicts captured
+    #    during stage4 cross-validation (no re-submission needed).
+    if cand.case_details:
+        feedback: list = []
+        for si, (score_row, detail_row) in enumerate(
+            zip(cand.score_matrix, cand.case_details)
+        ):
+            sol_entry = {"solution_index": si, "tests": []}
+            for ti, (score, detail) in enumerate(zip(score_row, detail_row)):
+                sol_entry["tests"].append({
+                    "test_index": ti + 1,
+                    "score": score,
+                    "status": detail.get("status", "?"),
+                    "msg": detail.get("msg", ""),
+                    "time_s": detail.get("time_s", 0.0),
+                })
+            feedback.append(sol_entry)
+        (art / "judge_feedback.json").write_text(
+            json.dumps(feedback, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+    # 5) original_statement.txt — the seed problem this was mutated from.
+    seed_stmt_path = Path(problems_root) / cand.seed_problem_id / "statement.txt"
+    if seed_stmt_path.exists():
+        shutil.copy2(seed_stmt_path, art / "original_statement.txt")
+    else:
+        # If the seed was itself synthesized (origin="synthesized"), there is no
+        # original statement on disk; skip silently.
+        pass
 
     print(f"[stage5]   artifact → {artifact_dir}")
 
@@ -89,7 +124,7 @@ def select_and_write(
 
         # Write the artifact bundle.
         artifact_dir = str(Path(config.artifacts_dir) / dir_name)
-        _write_artifact(cand, out_dir, artifact_dir)
+        _write_artifact(cand, out_dir, artifact_dir, config.problems_root)
 
         seeds.append(
             SeedProblem(

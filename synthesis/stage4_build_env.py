@@ -278,6 +278,7 @@ def _build_one(
             candidate.checker_code = chk_code
             candidate.test_inputs = test_inputs
             candidate.score_matrix = matrix
+            candidate.case_details = case_details
             candidate.exec_divergence_score = div
             candidate.validated = True
             candidate.build_log.append(f"round {round_idx}: validated")

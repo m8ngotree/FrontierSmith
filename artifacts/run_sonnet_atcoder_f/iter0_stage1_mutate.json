@@ -1,0 +1,33 @@
+[
+  {
+    "candidate_id": "atcoder_1202contest_f__f94ed875",
+    "seed_problem_id": "atcoder_1202contest_f",
+    "mutated_statement": "# Maximum Sum Set Partition with Median Constraints\n\n## Problem\nYou are given integers N, M, K and K **pairwise distinct** median targets c_1, c_2, \u2026, c_K.\n\nSelect exactly N **distinct** integers from {1, 2, \u2026, M} and partition them into K non-empty sets S_1, S_2, \u2026, S_K such that the median of each S_i equals c_i. Your goal is to maximize the sum of all selected integers.\n\nThe median of a non-empty finite set T of size n is defined as the \u2308n/2\u2309-th smallest element of T. For example, median({2,4,9}) = 4, median({1,8}) = 1, median({7}) = 7.\n\n## Input\n```\nN M K\nc_1 c_2 ... c_K\n```\nAll values are space-separated integers on two lines.\n\n## Output\nLine 1: K non-negative integers n_1, n_2, \u2026, n_K (the sizes of S_1,\u2026,S_K), space-separated.\nNext K lines: for each i from 1 to K, the n_i elements of S_i in **strictly increasing** order, space-separated.\n\n## Feasibility requirements\nAn output is **feasible** if and only if ALL of the following hold:\n1. Every element appearing in any S_i is a positive integer in {1, \u2026, M}.\n2. All elements across all S_i are **pairwise distinct** (their union is a set of size N).\n3. Each S_i is non-empty (n_i \u2265 1) and n_1 + n_2 + \u2026 + n_K = N.\n4. For each i, the \u2308n_i/2\u2309-th smallest element of S_i equals c_i.\n5. Each c_i appears somewhere in S_i (implied by condition 4 but stated for clarity).\n\nAn infeasible output receives a score of **0**.\n\n## Objective\nMaximize the total sum\n$$\\text{SUM} = \\sum_{i=1}^{K} \\sum_{x \\in S_i} x.$$\n\n## Scoring\nLet **UB** = M + (M\u22121) + \u2026 + (M\u2212N+1) be the sum of the N largest values in {1,\u2026,M} (unconstrained upper bound).\n\nLet **baseline** be the sum achieved by the following greedy: start with S_i = {c_i} for each i; then repeatedly take the largest unused value v in {1,\u2026,M} and append it to the group S_j that can absorb v while keeping median(S_j) = c_j, breaking ties by largest c_j; stop when N total elements are selected (if no group can absorb the next candidate, skip it and try the next smaller value).\n\nThe normalized test score for a feasible submission is:\n$$\\text{score} = \\frac{\\text{SUM} - \\text{baseline}}{\\text{UB} - \\text{baseline}},$$\nclamped to [0, 1]. A submission matching the baseline scores 0; a submission achieving the unconstrained upper bound scores 1. Infeasible submissions score 0.\n\n## Constraints\n- 1 \u2264 K \u2264 N \u2264 M \u2264 10^6\n- 1 \u2264 K \u2264 2 \u00d7 10^5\n- 1 \u2264 c_i \u2264 M for all i\n- All c_i are pairwise distinct\n- Time limit: 5 seconds\n- Memory limit: 256 MB\n\n## Example\n\n**Input**\n```\n7 10 3\n4 1 7\n```\n\n**Output**\n```\n3 2 2\n2 4 9\n1 8\n7 10\n```\n\n**Explanation**\n- S_1 = {2, 4, 9}: size 3, median = \u23083/2\u2309 = 2nd element = **4** \u2713\n- S_2 = {1, 8}: size 2, median = \u23082/2\u2309 = 1st element = **1** \u2713\n- S_3 = {7, 10}: size 2, median = \u23082/2\u2309 = 1st element = **7** \u2713\n- All 7 elements {1,2,4,7,8,9,10} are distinct values from {1,\u2026,10} \u2713\n- SUM = 1+2+4+7+8+9+10 = **41**\n- UB = 10+9+8+7+6+5+4 = 49\n- A non-trivial baseline and scoring apply as described above.",
+    "mutation_types": [
+      "changing_goals",
+      "restricting_outputs"
+    ],
+    "original_formulation": {
+      "O": "Count the number of 'good' multisets S of size N with elements from {1,...,M} such that S can be partitioned into K non-empty multisets each achieving a prescribed median, modulo 998244353.",
+      "C_I": "Positive integers N, M, K with 1\u2264N,M\u22641e7, 1\u2264K\u2264min(2e5,N), and a sequence c=(c_1,...,c_K) with 1\u2264c_i\u2264M.",
+      "C_O": "A single integer in [0, 998244352] representing the count modulo 998244353."
+    },
+    "mutated_formulation": {
+      "O_prime": "Maximize the sum of the N chosen integers, rather than counting configurations.",
+      "C_I_prime": "Same numeric ranges as original (K\u2264N\u2264M\u22641e6, K\u22642e5, 1\u2264c_i\u2264M), with the additional requirement that all c_i are pairwise distinct (guaranteeing a feasible solution always exists).",
+      "C_O_prime": "The output must describe a partition of exactly N **distinct** integers from {1,...,M} into K non-empty sets S_1,...,S_K each achieving its required median. Distinctness (elements form a set, not a multiset) is a hard feasibility constraint; violations yield score 0."
+    },
+    "coarse_filter_passed": null,
+    "coarse_filter_reasons": {},
+    "solutions": [],
+    "pairwise_judgments": [],
+    "llm_divergence_score": null,
+    "generator_code": null,
+    "checker_code": null,
+    "test_inputs": [],
+    "score_matrix": [],
+    "exec_divergence_score": null,
+    "validated": false,
+    "build_log": []
+  }
+]

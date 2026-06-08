@@ -206,6 +206,22 @@ def get_usage_totals() -> dict:
         return dict(_USAGE_TOTALS)
 
 
+def _sanitize_prompt_for_log(prompt: str) -> str:
+    """Replace ```cpp ... ``` solution blocks with compact placeholders.
+
+    Stage 4 prompts embed all sampled solutions (each potentially thousands of
+    lines of C++) which balloons the log file to tens of MB per call. We keep
+    the surrounding prompt text intact so the log remains readable, but swap
+    out each code block for a ``[cpp block: N chars]`` token.
+    """
+    return re.sub(
+        r"```(?:cpp|c\+\+)[^\n]*\n.*?```",
+        lambda m: f"[cpp block: {len(m.group(0))} chars]",
+        prompt,
+        flags=re.DOTALL,
+    )
+
+
 def _log_call(record: dict) -> None:
     """Append one JSON record to the log file (thread-safe) and update totals."""
     global _call_counter
@@ -225,6 +241,11 @@ def _log_call(record: dict) -> None:
             _USAGE_TOTALS["cost_usd"] = round(
                 _USAGE_TOTALS["cost_usd"] + record["cost_usd"], 6
             )
+        # Sanitize prompts for Stage 4: replace embedded C++ solution blocks
+        # with size placeholders to keep the log file manageable.
+        if "stage4" in (record.get("stage") or ""):
+            if record.get("prompt"):
+                record["prompt"] = _sanitize_prompt_for_log(record["prompt"])
         with open(_LOG_FILE, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
@@ -232,24 +253,13 @@ def _log_call(record: dict) -> None:
 print(f"[llm] API call log → {_LOG_FILE}")
 
 
-def _map_deepseek_effort(effort: Optional[str]) -> str:
-    """Map effort to DeepSeek's supported values (low/medium -> high, xhigh -> max)."""
-    if not effort:
-        return "high"
-    e = effort.lower()
-    if e in {"max", "xhigh"}:
-        return "max"
-    if e in {"low", "medium", "high"}:
-        return "high"
-    return effort
-
-
 class _SynthesisDeepSeek:
     """DeepSeek client using the OpenAI-compatible endpoint (thinking disabled).
 
-    Sends ``reasoning_effort`` but does NOT enable thinking mode, so the full
-    ``max_tokens`` budget is available for response content rather than being
-    consumed by chain-of-thought reasoning tokens.
+    Thinking mode is explicitly disabled so the full ``max_tokens`` budget is
+    available for response content rather than being consumed by chain-of-thought
+    reasoning tokens. Because thinking is off, ``reasoning_effort`` would have no
+    effect (DeepSeek only honours it in thinking mode), so it is not sent.
     """
 
     def __init__(
@@ -257,8 +267,7 @@ class _SynthesisDeepSeek:
         model: str,
         *,
         timeout: float,
-        reasoning_effort: str = "high",
-        max_tokens: int = 32000,
+        max_tokens: int = 65536,
         base_url: str = "https://api.deepseek.com",
         api_key: Optional[str] = None,
     ) -> None:
@@ -267,7 +276,6 @@ class _SynthesisDeepSeek:
         self.name = "deepseek"
         self.model = model
         self.max_tokens = max_tokens
-        self.reasoning_effort = _map_deepseek_effort(reasoning_effort)
 
     def call_llm(self, user_prompt: str) -> Tuple[str, Any]:
         try:
@@ -275,12 +283,17 @@ class _SynthesisDeepSeek:
                 model=self.model,
                 messages=[{"role": "user", "content": user_prompt}],
                 max_tokens=self.max_tokens,
-                # Do NOT send reasoning_effort — on thinking-capable DeepSeek models
-                # (e.g. v4-pro) that parameter alone triggers chain-of-thought mode,
-                # consuming the entire token budget on reasoning and leaving nothing
-                # for the actual response. Explicitly disable thinking instead.
+                # Disable thinking: on thinking-capable DeepSeek models (e.g.
+                # v4-pro) chain-of-thought shares the max_tokens budget and can
+                # consume it entirely, leaving the response content truncated.
                 extra_body={"thinking": {"type": "disabled"}},
             )
+            # If the response consumed every available output token the generation
+            # was cut off mid-stream. Treat as empty so callers don't receive
+            # truncated C++ that looks valid but won't compile or parse correctly.
+            out_tokens = getattr(completion.usage, "completion_tokens", None)
+            if out_tokens is not None and out_tokens >= self.max_tokens:
+                return "", f"TRUNCATED({out_tokens}>={self.max_tokens}) " + str(completion)
             msg = completion.choices[0].message
             return msg.content or "", str(completion)
         except APITimeoutError as e:
@@ -314,7 +327,7 @@ def _timeout_for(model: str, config: PipelineConfig) -> float:
     return config.llm_timeout
 
 
-def _instantiate(model: str, *, is_reasoning: bool, timeout: float, reasoning_effort: Optional[str] = None):
+def _instantiate(model: str, *, is_reasoning: bool, timeout: float):
     """Create an underlying LLMInterface client for the given model string,
     reusing the wrapper classes from llm_interface.py."""
     _, actual = (model.split("/", 1) if "/" in model else ("", model))
@@ -334,12 +347,7 @@ def _instantiate(model: str, *, is_reasoning: bool, timeout: float, reasoning_ef
         effort = "high" if is_reasoning else None
         return _iface.Grok(model=actual, reasoning_effort=effort, timeout=timeout)
     if provider == "deepseek":
-        effort = reasoning_effort or ("high" if is_reasoning else "high")
-        return _SynthesisDeepSeek(
-            actual,
-            timeout=timeout,
-            reasoning_effort=effort,
-        )
+        return _SynthesisDeepSeek(actual, timeout=timeout)
     if provider == "google":
         return _iface.Gemini(model=actual, timeout=timeout)
     # Fallback: treat as an OpenAI-compatible chat endpoint.
@@ -362,17 +370,11 @@ class LLMClient:
         is_reasoning: bool,
         timeout: float,
         max_concurrent: int = 8,
-        reasoning_effort: Optional[str] = None,
     ) -> None:
         self.model = model
         self.role = "llm"                                      # set by build_clients
         self.provider = _detect_provider(model)
-        self.client = _instantiate(
-            model,
-            is_reasoning=is_reasoning,
-            timeout=timeout,
-            reasoning_effort=reasoning_effort,
-        )
+        self.client = _instantiate(model, is_reasoning=is_reasoning, timeout=timeout)
         self.raw = getattr(self.client, "client", None)        # underlying SDK client
         self.model_id = getattr(self.client, "model", model)
         self._sem = threading.Semaphore(max_concurrent)
@@ -438,7 +440,17 @@ class LLMClient:
         auth failure is reported instead of silently hanging the pipeline.
         """
         try:
-            if self.provider in {"openai", "xai", "deepseek"}:
+            if self.provider == "deepseek":
+                # Mirror the real call: thinking disabled, no reasoning_effort.
+                self.raw.chat.completions.create(
+                    model=self.model_id,
+                    messages=[{"role": "user", "content": "ping"}],
+                    timeout=timeout,
+                    max_tokens=16,
+                    extra_body={"thinking": {"type": "disabled"}},
+                )
+                return True, "ok"
+            if self.provider in {"openai", "xai"}:
                 kwargs = {
                     "model": self.model_id,
                     "messages": [{"role": "user", "content": "ping"}],
@@ -488,7 +500,6 @@ def build_clients(config: PipelineConfig) -> Clients:
         is_reasoning=True,
         timeout=mutation_timeout,
         max_concurrent=config.max_workers,
-        reasoning_effort=config.mutation_reasoning_effort,
     )
     # OpenAI GPT: factory defaults to "high"; override with config.
     if hasattr(mutation.client, "reasoning_effort") and _detect_provider(config.mutation_model) != "deepseek":
@@ -499,7 +510,6 @@ def build_clients(config: PipelineConfig) -> Clients:
         is_reasoning=True,
         timeout=solver_timeout,
         max_concurrent=solver_concurrent,
-        reasoning_effort=config.mutation_reasoning_effort if solver_is_deepseek else None,
     )
     if hasattr(solver.client, "thinking_budget"):
         solver.client.thinking_budget = config.solver_thinking_budget or None

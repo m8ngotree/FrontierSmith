@@ -89,12 +89,13 @@ def write_problem_directory(
 ) -> str:
     """Write a complete FrontierCS problem package to ``out_dir``.
 
-    Layout (no .ans files -- the custom checker scores from input + output):
+    Layout:
         out_dir/statement.txt
         out_dir/config.yaml
         out_dir/chk.cc
         out_dir/gen.cpp
         out_dir/testdata/1.in ... N.in
+        out_dir/testdata/1.ans ... N.ans  (empty; judge requires these to exist)
     Returns the path to ``out_dir``.
     """
     out = Path(out_dir)
@@ -113,6 +114,8 @@ def write_problem_directory(
         # Ensure a trailing newline, as most testlib readers expect one.
         text = content if content.endswith("\n") else content + "\n"
         (testdata / f"{i}.in").write_text(text, encoding="utf-8")
+        # Judge requires .ans files to exist alongside .in files even for custom-checker problems.
+        (testdata / f"{i}.ans").write_text("", encoding="utf-8")
 
     return str(out)
 

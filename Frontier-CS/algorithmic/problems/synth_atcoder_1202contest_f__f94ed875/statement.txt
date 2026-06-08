@@ -1,0 +1,75 @@
+# Maximum Sum Set Partition with Median Constraints
+
+## Problem
+You are given integers N, M, K and K **pairwise distinct** median targets c_1, c_2, …, c_K.
+
+Select exactly N **distinct** integers from {1, 2, …, M} and partition them into K non-empty sets S_1, S_2, …, S_K such that the median of each S_i equals c_i. Your goal is to maximize the sum of all selected integers.
+
+The median of a non-empty finite set T of size n is defined as the ⌈n/2⌉-th smallest element of T. For example, median({2,4,9}) = 4, median({1,8}) = 1, median({7}) = 7.
+
+## Input
+```
+N M K
+c_1 c_2 ... c_K
+```
+All values are space-separated integers on two lines.
+
+## Output
+Line 1: K non-negative integers n_1, n_2, …, n_K (the sizes of S_1,…,S_K), space-separated.
+Next K lines: for each i from 1 to K, the n_i elements of S_i in **strictly increasing** order, space-separated.
+
+## Feasibility requirements
+An output is **feasible** if and only if ALL of the following hold:
+1. Every element appearing in any S_i is a positive integer in {1, …, M}.
+2. All elements across all S_i are **pairwise distinct** (their union is a set of size N).
+3. Each S_i is non-empty (n_i ≥ 1) and n_1 + n_2 + … + n_K = N.
+4. For each i, the ⌈n_i/2⌉-th smallest element of S_i equals c_i.
+5. Each c_i appears somewhere in S_i (implied by condition 4 but stated for clarity).
+
+An infeasible output receives a score of **0**.
+
+## Objective
+Maximize the total sum
+$$\text{SUM} = \sum_{i=1}^{K} \sum_{x \in S_i} x.$$
+
+## Scoring
+Let **UB** = M + (M−1) + … + (M−N+1) be the sum of the N largest values in {1,…,M} (unconstrained upper bound).
+
+Let **baseline** be the sum achieved by the following greedy: start with S_i = {c_i} for each i; then repeatedly take the largest unused value v in {1,…,M} and append it to the group S_j that can absorb v while keeping median(S_j) = c_j, breaking ties by largest c_j; stop when N total elements are selected (if no group can absorb the next candidate, skip it and try the next smaller value).
+
+The normalized test score for a feasible submission is:
+$$\text{score} = \frac{\text{SUM} - \text{baseline}}{\text{UB} - \text{baseline}},$$
+clamped to [0, 1]. A submission matching the baseline scores 0; a submission achieving the unconstrained upper bound scores 1. Infeasible submissions score 0.
+
+## Constraints
+- 1 ≤ K ≤ N ≤ M ≤ 10^6
+- 1 ≤ K ≤ 2 × 10^5
+- 1 ≤ c_i ≤ M for all i
+- All c_i are pairwise distinct
+- Time limit: 5 seconds
+- Memory limit: 256 MB
+
+## Example
+
+**Input**
+```
+7 10 3
+4 1 7
+```
+
+**Output**
+```
+3 2 2
+2 4 9
+1 8
+7 10
+```
+
+**Explanation**
+- S_1 = {2, 4, 9}: size 3, median = ⌈3/2⌉ = 2nd element = **4** ✓
+- S_2 = {1, 8}: size 2, median = ⌈2/2⌉ = 1st element = **1** ✓
+- S_3 = {7, 10}: size 2, median = ⌈2/2⌉ = 1st element = **7** ✓
+- All 7 elements {1,2,4,7,8,9,10} are distinct values from {1,…,10} ✓
+- SUM = 1+2+4+7+8+9+10 = **41**
+- UB = 10+9+8+7+6+5+4 = 49
+- A non-trivial baseline and scoring apply as described above.

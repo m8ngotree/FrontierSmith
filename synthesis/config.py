@@ -67,6 +67,7 @@ class PipelineConfig:
     seed_list_path: str = str(REPO_ROOT / "data" / "sample_lists" / "hardtest_hard_sampled_200.json")
     problems_root: str = str(REPO_ROOT / "data" / "problems" / "hardtest")          # where seed statements live (download_hardtest.py writes here)
     output_dir: str = str(REPO_ROOT / "synthesis" / "output" / "problems")          # generated packages
+    artifacts_dir: str = str(REPO_ROOT / "artifacts")                               # per-problem artifact bundles
     checkpoint_dir: str = str(REPO_ROOT / "synthesis" / "checkpoints")              # per-stage JSON
 
     # --- Misc ---

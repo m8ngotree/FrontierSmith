@@ -109,7 +109,6 @@ def run(config: PipelineConfig, *, fresh: bool = False, skip_preflight: bool = F
 
         seed_pool: List[SeedProblem] = load_seed_pool(config)
         all_validated: List[Candidate] = []
-        next_problem_index = 1
 
         for it in range(config.num_iterations):
             print(f"\n===== Iteration {it + 1}/{config.num_iterations} =====")
@@ -135,9 +134,7 @@ def run(config: PipelineConfig, *, fresh: bool = False, skip_preflight: bool = F
                 lambda: build_environment(candidates, clients, judge, config),
             )
 
-            selected, new_seeds, next_problem_index = select_and_write(
-                validated, config, start_index=next_problem_index
-            )
+            selected, new_seeds = select_and_write(validated, config)
             seed_pool.extend(new_seeds)          # line 15: expand the pool
             all_validated.extend(selected)
             print(f"[pipeline] iteration {it + 1} produced {len(selected)} validated problems "

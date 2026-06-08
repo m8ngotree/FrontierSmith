@@ -29,8 +29,8 @@ from .types import Candidate, SeedProblem
 from .utils import write_problem_directory
 
 
-def _problem_dir_name(index: int) -> str:
-    return f"frontiersmith_synth_{index}"
+def _problem_dir_name(candidate_id: str) -> str:
+    return f"frontiersmith_synth__{candidate_id}"
 
 
 def _write_artifact(
@@ -96,11 +96,11 @@ def _write_artifact(
 
 
 def select_and_write(
-    candidates: List[Candidate], config: PipelineConfig, *, start_index: int = 1
-) -> Tuple[List[Candidate], List[SeedProblem], int]:
+    candidates: List[Candidate], config: PipelineConfig
+) -> Tuple[List[Candidate], List[SeedProblem]]:
     """Select the top N_final validated candidates and write their packages.
 
-    Returns (selected_candidates, seed_problems_for_pool, next_index).
+    Returns (selected_candidates, seed_problems_for_pool).
     """
     validated = [c for c in candidates if c.validated and c.exec_divergence_score is not None]
     ranked = sorted(validated, key=lambda c: c.exec_divergence_score or 0.0, reverse=True)
@@ -108,9 +108,8 @@ def select_and_write(
 
     os.makedirs(config.output_dir, exist_ok=True)
     seeds: List[SeedProblem] = []
-    index = start_index
     for cand in selected:
-        dir_name = _problem_dir_name(index)
+        dir_name = _problem_dir_name(cand.candidate_id)
 
         # Write the FrontierCS problem package.
         out_dir = str(Path(config.output_dir) / dir_name)
@@ -135,10 +134,9 @@ def select_and_write(
                 origin="synthesized",
             )
         )
-        index += 1
 
     print(
         f"[stage5] Wrote {len(selected)}/{len(validated)} validated problems to "
         f"{config.output_dir} (N_final={config.N_final})."
     )
-    return selected, seeds, index
+    return selected, seeds

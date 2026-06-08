@@ -1,0 +1,101 @@
+[
+  {
+    "solution_index": 0,
+    "tests": [
+      {
+        "test_index": 1,
+        "score": 0.0,
+        "status": "Wrong Answer",
+        "msg": "points 0.0 OK R=2 B=3 U=6 Ratio: 0.000000",
+        "time_s": 1.05
+      },
+      {
+        "test_index": 2,
+        "score": 0.0,
+        "status": "Wrong Answer",
+        "msg": "points 0.0 OK R=2251 B=2350 U=11853 Ratio: 0.000000",
+        "time_s": 219.89
+      },
+      {
+        "test_index": 3,
+        "score": 0.0,
+        "status": "Wrong Answer",
+        "msg": "points 0.0 OK R=0 B=9749525 U=792624950 Ratio: 0.000000",
+        "time_s": 1438.76
+      },
+      {
+        "test_index": 4,
+        "score": 0.0,
+        "status": "Wrong Answer",
+        "msg": "points 0.0 OK R=0 B=0 U=1079325122 Ratio: 0.000000",
+        "time_s": 919.64
+      }
+    ]
+  },
+  {
+    "solution_index": 1,
+    "tests": [
+      {
+        "test_index": 1,
+        "score": 1.0,
+        "status": "Correct",
+        "msg": "points 1.0 OK R=6 B=3 U=6 Ratio: 1.000000",
+        "time_s": 1.61
+      },
+      {
+        "test_index": 2,
+        "score": 1.0,
+        "status": "Correct",
+        "msg": "points 1.0 OK R=11853 B=2350 U=11853 Ratio: 1.000000",
+        "time_s": 340.4
+      },
+      {
+        "test_index": 3,
+        "score": 0.0,
+        "status": "Wrong Answer",
+        "msg": "",
+        "time_s": 8007.86
+      },
+      {
+        "test_index": 4,
+        "score": 0.0,
+        "status": "Wrong Answer",
+        "msg": "points 0.0 OK R=-505037 B=0 U=1079325122 Ratio: 0.000000",
+        "time_s": 2818.99
+      }
+    ]
+  },
+  {
+    "solution_index": 2,
+    "tests": [
+      {
+        "test_index": 1,
+        "score": 1.0,
+        "status": "Correct",
+        "msg": "points 1.0 OK R=6 B=3 U=6 Ratio: 1.000000",
+        "time_s": 1.07
+      },
+      {
+        "test_index": 2,
+        "score": 1.0,
+        "status": "Correct",
+        "msg": "points 1.0 OK R=11853 B=2350 U=11853 Ratio: 1.000000",
+        "time_s": 1637.31
+      },
+      {
+        "test_index": 3,
+        "score": 0.0,
+        "status": "Wrong Answer",
+        "msg": "",
+        "time_s": 8005.68
+      },
+      {
+        "test_index": 4,
+        "score": 0.0,
+        "status": "Wrong Answer",
+        "msg": "",
+        "time_s": 8006.8
+      }
+    ]
+  }
+]

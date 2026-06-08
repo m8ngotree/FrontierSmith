@@ -1,0 +1,103 @@
+## Problem Description
+
+Given $N$ distinct lattice points $ (X_i, Y_i) (i = 1, 2, \dots, N) $ on the plane, each lattice point $ (X_i, Y_i) $ has an integer score $ P_i $. From these lattice points, select any number of them such that the following condition is satisfied. Find the maximum possible sum of the scores of the selected lattice points.
+
+**Condition:** Any lattice point that is **dominated** by the **convex combination** of the selected lattice points must also be selected. That is, for each $ k = 1, 2, \dots, N $, if there exists a set of $N$ **non-negative** real numbers $ (\lambda_1, \lambda_2, \dots, \lambda_N) $ that satisfies:
+
+- $ \lambda_i > 0 \implies $ the lattice point $ (X_i, Y_i) $ is selected.
+- $ \sum_{i=1}^N \lambda_i = 1 $
+- $ \sum_{i=1}^N \lambda_i X_i \geq X_k $
+- $ \sum_{i=1}^N \lambda_i Y_i \geq Y_k $
+
+then the lattice point $ (X_k, Y_k) $ must be selected.
+
+## Input Format
+
+The input is given from the standard input in the following format:
+
+> $ N $ $ X_1\ Y_1\ P_1 $ $ X_2\ Y_2\ P_2 $ $ \vdots $ $ X_N\ Y_N\ P_N $
+
+## Output Format
+
+Output the maximum possible sum of the scores that can be achieved by selecting lattice points satisfying the condition.
+
+## Sample Input and Output
+
+### Sample Input #1
+
+```
+3
+1 4 2
+4 1 3
+2 2 -4
+```
+
+### Sample Output #1
+
+```
+3
+```
+
+### Sample Input #2
+
+```
+3
+1 4 2
+4 1 3
+2 2 -1
+```
+
+### Sample Output #2
+
+```
+4
+```
+
+### Sample Input #3
+
+```
+3
+1 4 2
+4 1 3
+1 1 -6
+```
+
+### Sample Output #3
+
+```
+0
+```
+
+## Notes/Hints
+
+### Constraints
+
+- $ 1 \leq N \leq 200 $
+- $ 1 \leq X_i \leq 10^9 (1 \leq i \leq N) $
+- $ 1 \leq Y_i \leq 10^9 (1 \leq i \leq N) $
+- $ (X_i, Y_i) \neq (X_j, Y_j) (i \neq j) $
+- $ |P_i| \leq 10^7 (1 \leq i \leq N) $
+
+### Sample Explanation 1
+
+Selecting only $ (X_2, Y_2) = (4, 1) $ is optimal. If $ (X_1, Y_1) = (1, 4) $ is also selected, for example, by setting $ \lambda_1 = 0.4, \lambda_2 = 0.6 $, we get:
+
+\[
+\lambda_1 + \lambda_2 = 0.4 + 0.6 = 1
+\]
+\[
+\lambda_1 X_1 + \lambda_2 X_2 = 0.4 \times 1 + 0.6 \times 4 = 2.8 \geq 2 = X_3
+\]
+\[
+\lambda_1 Y_1 + \lambda_2 Y_2 = 0.4 \times 4 + 0.6 \times 1 = 2.2 \geq 2 = Y_3
+\]
+
+Thus, $ (X_3, Y_3) = (2, 2) $ must also be selected, resulting in a loss.
+
+### Sample Explanation 2
+
+Selecting all points is optimal.
+
+### Sample Explanation 3
+
+It might be optimal to select none at all.
